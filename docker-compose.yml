@@ -1,0 +1,25 @@
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+      - FAITHFULNESS_THRESHOLD=0.6
+      - MIN_THRESHOLD=0.3
+      - MAX_THRESHOLD=0.9
+      - MAX_BATCH_ITEMS=50
+      - RATE_LIMIT_PER_MINUTE=120
+      - CORS_ORIGINS=http://127.0.0.1:4176,http://localhost:4176
+    ports:
+      - "8003:8003"
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9093:9090"
+    depends_on:
+      - api
