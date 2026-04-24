@@ -147,3 +147,15 @@ Local endpoints:
 3. `docs/DEPLOYMENT.md`
 4. `docs/TESTING.md`
 5. `docs/THRESHOLD_CALIBRATION.md`
+
+## Limitations
+
+1. Optional API key auth is shared-secret based and not integrated with managed identity providers.
+2. Rate limiting is in-memory and not shared across multiple replicas.
+3. Model artifacts are loaded at runtime and are not pinned to a dedicated model registry in this repository.
+
+## Next Roadmap
+
+1. Add managed identity and scoped role-based access controls.
+2. Move throttling to a distributed store for multi-instance enforcement.
+3. Add model artifact provenance and signed release attestations.

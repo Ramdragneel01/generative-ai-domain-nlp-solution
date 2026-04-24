@@ -33,6 +33,7 @@
 7. `MAX_RESPONSE_CHARS`
 8. `RATE_LIMIT_PER_MINUTE`
 9. `CORS_ORIGINS`
+10. `API_KEY` (optional; enables API key auth for `/score` and `/batch`)
 
 ## Release Pipelines
 

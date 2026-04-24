@@ -18,3 +18,4 @@ Security fixes are applied to the latest `main` branch.
 3. Request rate limiting for scoring endpoints.
 4. Security headers and CORS allowlist enforced by middleware.
 5. Request IDs returned in both success and error responses.
+6. Optional `X-API-Key` authentication for scoring endpoints when configured.

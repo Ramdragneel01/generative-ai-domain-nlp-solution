@@ -19,6 +19,10 @@ Response fields:
 
 Scores one context-response pair.
 
+Security behavior:
+1. Requires `X-API-Key` header when `API_KEY` is configured.
+2. Subject to per-client rate limiting.
+
 Request body:
 1. `context`
 2. `response`
@@ -36,6 +40,10 @@ Response fields:
 ## POST /batch
 
 Scores multiple pairs in one request.
+
+Security behavior:
+1. Requires `X-API-Key` header when `API_KEY` is configured.
+2. Subject to per-client rate limiting.
 
 Request body:
 1. `items` array of `{ context, response }`
@@ -60,3 +68,7 @@ Prometheus metrics endpoint.
 Error payload fields:
 1. `detail`
 2. `request_id`
+
+Common status codes:
+1. `401` for missing or invalid API key when auth is enabled.
+2. `429` for rate-limit exceedance.

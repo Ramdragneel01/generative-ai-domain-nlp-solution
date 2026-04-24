@@ -23,6 +23,7 @@ class Settings:
     max_response_chars: int
     rate_limit_per_minute: int
     cors_origins: list[str]
+    api_key: str
 
 
 @lru_cache(maxsize=1)
@@ -42,4 +43,5 @@ def get_settings() -> Settings:
         max_response_chars=int(os.getenv("MAX_RESPONSE_CHARS", "50000")),
         rate_limit_per_minute=int(os.getenv("RATE_LIMIT_PER_MINUTE", "120")),
         cors_origins=[origin.strip() for origin in origin_value.split(",") if origin.strip()],
+        api_key=os.getenv("API_KEY", "").strip(),
     )

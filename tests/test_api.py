@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from fastapi.testclient import TestClient
 
 from hallucination_lens import api
@@ -49,6 +51,12 @@ def _client_with_fake_scorer(monkeypatch):
 
     monkeypatch.setattr(api, "get_scorer", lambda: FakeScorer())
     return TestClient(api.app)
+
+
+def _override_settings(monkeypatch, **changes):
+    """Apply temporary runtime setting overrides during endpoint tests."""
+
+    monkeypatch.setattr(api, "settings", replace(api.settings, **changes))
 
 
 def test_health_endpoint_exposes_limits_and_version(monkeypatch):
@@ -130,3 +138,42 @@ def test_batch_threshold_outside_governance_is_rejected(monkeypatch):
 
     assert response.status_code == 422
     assert "governance limits" in response.json()["detail"]
+
+
+def test_score_requires_api_key_when_configured(monkeypatch):
+    """Score endpoint should return 401 without valid API key when enabled."""
+
+    _override_settings(monkeypatch, api_key="secret-key")
+    client = _client_with_fake_scorer(monkeypatch)
+
+    unauthorized = client.post(
+        "/score",
+        json={
+            "context": "Paris is the capital of France.",
+            "response": "Paris is in France.",
+            "threshold": 0.6,
+        },
+    )
+    assert unauthorized.status_code == 401
+
+    authorized = client.post(
+        "/score",
+        headers={"X-API-Key": "secret-key"},
+        json={
+            "context": "Paris is the capital of France.",
+            "response": "Paris is in France.",
+            "threshold": 0.6,
+        },
+    )
+    assert authorized.status_code == 200
+
+
+def test_health_stays_public_with_api_key_enabled(monkeypatch):
+    """Health endpoint remains public for orchestrator liveness checks."""
+
+    _override_settings(monkeypatch, api_key="secret-key")
+    client = _client_with_fake_scorer(monkeypatch)
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"

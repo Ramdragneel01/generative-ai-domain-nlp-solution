@@ -17,6 +17,7 @@ Current integration tests validate:
 2. Single score response shape.
 3. Batch score aggregate fields.
 4. Threshold governance rejection behavior.
+5. API key enforcement for protected scoring endpoints.
 
 ## CLI Coverage
 
