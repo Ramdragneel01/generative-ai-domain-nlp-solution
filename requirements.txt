@@ -3,7 +3,7 @@ sentence-transformers==3.0.1
 torch==2.3.1
 numpy==1.26.4
 fastapi==0.116.1
-uvicorn==0.35.0
+uvicorn==0.46.0
 prometheus-client==0.23.1
 pydantic==2.11.7
 redis==5.2.1
