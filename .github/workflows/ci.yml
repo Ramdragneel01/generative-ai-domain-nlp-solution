@@ -61,7 +61,8 @@ jobs:
         run: ruff check src tests
 
       - name: Run tests
-        run: pytest -q --maxfail=1 --cov=src --cov-report=term-missing:skip-covered --cov-fail-under=50
+        run: pytest -q --maxfail=1 --cov=src --cov-report=term-missing:skip-covered
+          --cov-fail-under=50
 
       - name: Build package
         run: python -m build
