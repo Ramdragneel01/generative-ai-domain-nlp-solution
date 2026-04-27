@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import Annotated
 from datetime import datetime, timezone
 from time import perf_counter
@@ -10,9 +11,11 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .config import Settings, get_settings
 from .rate_limit import InMemoryRateLimiter
@@ -94,6 +97,15 @@ class HealthResponse(BaseModel):
     max_batch_items: int
 
 
+class ReadinessResponse(BaseModel):
+    """Readiness diagnostics payload for orchestrator startup checks."""
+
+    status: str
+    timestamp: str
+    app_version: str
+    model_loaded: bool
+
+
 settings = get_settings()
 limiter = InMemoryRateLimiter(window_seconds=60)
 _scorer: HallucinationScorer | None = None
@@ -121,7 +133,22 @@ VERDICT_COUNTER = Counter(
 )
 
 
-app = FastAPI(title=settings.app_name, version=settings.app_version)
+@asynccontextmanager
+async def _lifespan(_: FastAPI):
+    """Initialize optional startup resources before serving requests."""
+
+    if settings.preload_model_on_startup:
+        get_scorer()
+    yield
+
+
+app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=_lifespan)
+if settings.trusted_hosts:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts)
+
+if settings.enable_gzip:
+    app.add_middleware(GZipMiddleware, minimum_size=settings.gzip_minimum_size)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -152,7 +179,11 @@ def _client_key(request: Request) -> str:
 def _validate_governed_threshold(value: float, runtime_settings: Settings) -> float:
     """Enforce threshold within global safety and governance boundaries."""
 
-    threshold = validate_threshold(value)
+    try:
+        threshold = validate_threshold(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     if threshold < runtime_settings.min_threshold or threshold > runtime_settings.max_threshold:
         raise HTTPException(
             status_code=422,
@@ -179,6 +210,30 @@ def _require_api_key(
 AuthDep = Annotated[None, Depends(_require_api_key)]
 
 
+def _attach_response_headers(response, request_id: str) -> None:
+    """Attach tracing and security headers to every API response."""
+
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    if settings.enable_hsts:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+
+def _record_request_metrics(request: Request, status_code: int, started_at: float) -> None:
+    """Record request count and request latency metrics for observability."""
+
+    REQUEST_COUNTER.labels(
+        method=request.method,
+        endpoint=request.url.path,
+        status=str(status_code),
+    ).inc()
+    REQUEST_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(perf_counter() - started_at)
+
+
 @app.middleware("http")
 async def request_context_middleware(request: Request, call_next):
     """Attach request id, security headers, and request-level metrics."""
@@ -187,20 +242,35 @@ async def request_context_middleware(request: Request, call_next):
     request.state.request_id = request_id
     started_at = perf_counter()
 
+    raw_content_length = request.headers.get("content-length")
+    if raw_content_length:
+        try:
+            content_length = int(raw_content_length)
+        except ValueError:
+            response = JSONResponse(
+                status_code=400,
+                content={"detail": "Invalid Content-Length header", "request_id": request_id},
+            )
+            _record_request_metrics(request, response.status_code, started_at)
+            _attach_response_headers(response, request_id)
+            return response
+
+        if content_length > settings.max_request_bytes:
+            response = JSONResponse(
+                status_code=413,
+                content={
+                    "detail": f"Request body too large (max {settings.max_request_bytes} bytes)",
+                    "request_id": request_id,
+                },
+            )
+            _record_request_metrics(request, response.status_code, started_at)
+            _attach_response_headers(response, request_id)
+            return response
+
     response = await call_next(request)
 
-    REQUEST_COUNTER.labels(
-        method=request.method,
-        endpoint=request.url.path,
-        status=str(response.status_code),
-    ).inc()
-    REQUEST_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(perf_counter() - started_at)
-
-    response.headers["X-Request-ID"] = request_id
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    _record_request_metrics(request, response.status_code, started_at)
+    _attach_response_headers(response, request_id)
     return response
 
 
@@ -225,6 +295,23 @@ def health() -> HealthResponse:
         model_name=settings.model_name,
         default_threshold=settings.default_threshold,
         max_batch_items=settings.max_batch_items,
+    )
+
+
+@app.get("/ready", response_model=ReadinessResponse)
+def ready() -> ReadinessResponse:
+    """Return readiness status that verifies model initialization succeeds."""
+
+    try:
+        get_scorer()
+    except Exception as exc:  # pragma: no cover - defensive startup/readiness boundary
+        raise HTTPException(status_code=503, detail=f"model initialization failed: {exc}") from exc
+
+    return ReadinessResponse(
+        status="ready",
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        app_version=settings.app_version,
+        model_loaded=True,
     )
 
 

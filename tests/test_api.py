@@ -71,6 +71,18 @@ def test_health_endpoint_exposes_limits_and_version(monkeypatch):
     assert payload["max_batch_items"] > 0
 
 
+def test_ready_endpoint_reports_model_loaded(monkeypatch):
+    """Readiness endpoint should confirm model backend initialization status."""
+
+    client = _client_with_fake_scorer(monkeypatch)
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready"
+    assert payload["model_loaded"] is True
+
+
 def test_score_endpoint_returns_contract(monkeypatch):
     """Single score endpoint should return verdict and sentence-level evidence."""
 
@@ -177,3 +189,33 @@ def test_health_stays_public_with_api_key_enabled(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+
+
+def test_request_body_over_limit_is_rejected(monkeypatch):
+    """Requests that exceed configured body size should fail with 413."""
+
+    _override_settings(monkeypatch, max_request_bytes=120)
+    client = _client_with_fake_scorer(monkeypatch)
+    response = client.post(
+        "/score",
+        json={
+            "context": "Paris is the capital of France." * 8,
+            "response": "Paris is in France." * 6,
+            "threshold": 0.6,
+        },
+    )
+
+    assert response.status_code == 413
+    assert "Request body too large" in response.json()["detail"]
+
+
+def test_security_headers_are_present(monkeypatch):
+    """Middleware should attach baseline security headers to normal responses."""
+
+    client = _client_with_fake_scorer(monkeypatch)
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Content-Security-Policy"].startswith("default-src")
