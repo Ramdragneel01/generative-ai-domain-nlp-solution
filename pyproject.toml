@@ -16,7 +16,7 @@ license = "MIT"
 dependencies = [
   "sentence-transformers==3.0.1",
   "torch==2.3.1",
-  "numpy==1.26.4",
+  "numpy==2.2.6",
   "fastapi==0.116.1",
   "uvicorn==0.35.0",
   "prometheus-client==0.23.1",
