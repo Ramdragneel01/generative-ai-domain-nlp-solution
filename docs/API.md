@@ -30,9 +30,10 @@ Response fields:
 Scores one context-response pair.
 
 Security behavior:
-1. Requires `X-API-Key` header when `API_KEY` is configured.
-2. Subject to per-client rate limiting.
-3. Request body size is capped by `MAX_REQUEST_BYTES`.
+1. Requires gateway authentication when `GATEWAY_AUTH_ENABLED=true`.
+2. Requires `X-API-Key` header when `API_KEY` is configured.
+3. Subject to per-client rate limiting with `RATE_LIMIT_BACKEND` (`memory` or `redis`).
+4. Request body size is capped by `MAX_REQUEST_BYTES`.
 
 Request body:
 1. `context`
@@ -53,9 +54,10 @@ Response fields:
 Scores multiple pairs in one request.
 
 Security behavior:
-1. Requires `X-API-Key` header when `API_KEY` is configured.
-2. Subject to per-client rate limiting.
-3. Request body size is capped by `MAX_REQUEST_BYTES`.
+1. Requires gateway authentication when `GATEWAY_AUTH_ENABLED=true`.
+2. Requires `X-API-Key` header when `API_KEY` is configured.
+3. Subject to per-client rate limiting with `RATE_LIMIT_BACKEND` (`memory` or `redis`).
+4. Request body size is capped by `MAX_REQUEST_BYTES`.
 
 Request body:
 1. `items` array of `{ context, response }`
@@ -82,6 +84,7 @@ Error payload fields:
 2. `request_id`
 
 Common status codes:
-1. `401` for missing or invalid API key when auth is enabled.
+1. `401` for missing/invalid gateway auth or API key when auth is enabled.
 2. `429` for rate-limit exceedance.
 3. `413` when request payload exceeds `MAX_REQUEST_BYTES`.
+4. `503` when the configured rate-limiter backend is unavailable.

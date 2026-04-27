@@ -8,10 +8,22 @@ services:
     environment:
       - UVICORN_WORKERS=${UVICORN_WORKERS:-2}
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      - RATE_LIMIT_BACKEND=${RATE_LIMIT_BACKEND:-redis}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_SOCKET_TIMEOUT_SECONDS=${REDIS_SOCKET_TIMEOUT_SECONDS:-1.0}
+      - RATE_LIMIT_REDIS_KEY_PREFIX=${RATE_LIMIT_REDIS_KEY_PREFIX:-hallucination-lens:rate-limit}
       - PRELOAD_MODEL_ON_STARTUP=${PRELOAD_MODEL_ON_STARTUP:-true}
       - ENABLE_HSTS=${ENABLE_HSTS:-true}
+      - GATEWAY_AUTH_ENABLED=${GATEWAY_AUTH_ENABLED:-false}
+      - GATEWAY_AUTH_HEADER=${GATEWAY_AUTH_HEADER:-X-Gateway-Auth}
+      - GATEWAY_AUTH_SECRET=${GATEWAY_AUTH_SECRET:-}
+      - GATEWAY_PRINCIPAL_HEADER=${GATEWAY_PRINCIPAL_HEADER:-X-Principal-Id}
+      - REQUIRE_GATEWAY_PRINCIPAL=${REQUIRE_GATEWAY_PRINCIPAL:-false}
     ports:
       - "${API_PORT:-8003}:8003"
+    depends_on:
+      redis:
+        condition: service_healthy
     read_only: true
     tmpfs:
       - /tmp:size=64m
@@ -25,6 +37,19 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+
+  redis:
+    image: redis:7.2.5-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    volumes:
+      - redis_data:/data
 
   prometheus:
     image: prom/prometheus:v2.53.4
@@ -41,3 +66,4 @@ services:
 
 volumes:
   prometheus_data:
+  redis_data:

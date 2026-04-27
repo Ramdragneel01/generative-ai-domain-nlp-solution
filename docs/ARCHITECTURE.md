@@ -16,7 +16,7 @@
 4. `src/hallucination_lens/config.py`
 : Environment-driven runtime controls.
 5. `src/hallucination_lens/rate_limit.py`
-: In-memory request throttling.
+: Pluggable request throttling backends (in-memory or Redis).
 
 ## API Data Flow
 
@@ -29,8 +29,9 @@
 ## Security and Reliability
 
 1. Threshold governance controls avoid unsafe decision drift.
-2. Per-client rate limiting reduces abuse.
+2. Per-client rate limiting reduces abuse with Redis support across replicas.
 3. Trusted-host checks reduce Host header abuse in production ingress paths.
 4. Request body-size limits guard against oversized payload DoS patterns.
-5. Security headers and CORS allowlist are enforced.
-6. Request IDs support traceable diagnostics.
+5. Gateway authentication can be enforced before API key validation.
+6. Security headers and CORS allowlist are enforced.
+7. Request IDs support traceable diagnostics.

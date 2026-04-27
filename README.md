@@ -10,9 +10,9 @@ LinkedIn mapping: Generative AI Solution for Large-Scale Domain-Specific NLP Tas
 1. Library scorer for sentence-level faithfulness scoring.
 2. Batch scoring support in both library and CLI.
 3. FastAPI service wrapper with `/health`, `/ready`, `/score`, `/batch`, and `/metrics`.
-4. Threshold governance controls, request rate limiting, and request size limits.
+4. Threshold governance controls, Redis-backed request rate limiting, and request size limits.
 5. Prometheus metrics and container deployment artifacts.
-6. CI quality gates and release pipelines for package and container images.
+6. CI quality gates and release pipelines for package and signed container images.
 7. Governance and operations documentation baseline.
 
 ## Scoring Methodology
@@ -126,9 +126,11 @@ This prevents unsafe threshold drift in production calls.
 
 1. `TRUSTED_HOSTS` enforces host-header allowlisting for ingress safety.
 2. `MAX_REQUEST_BYTES` rejects oversized request payloads with `413`.
-3. `ENABLE_GZIP` and `GZIP_MINIMUM_SIZE` reduce response payload size.
-4. `PRELOAD_MODEL_ON_STARTUP` enables fail-fast startup checks.
-5. `ENABLE_HSTS` can be enabled behind HTTPS-terminating ingress.
+3. `RATE_LIMIT_BACKEND=redis` enables distributed throttling across replicas.
+4. `GATEWAY_AUTH_ENABLED` enforces gateway secret validation before API key auth.
+5. `ENABLE_GZIP` and `GZIP_MINIMUM_SIZE` reduce response payload size.
+6. `PRELOAD_MODEL_ON_STARTUP` enables fail-fast startup checks.
+7. `ENABLE_HSTS` can be enabled behind HTTPS-terminating ingress.
 
 ## Validation Commands
 
@@ -165,12 +167,11 @@ Local endpoints:
 
 ## Limitations
 
-1. Optional API key auth is shared-secret based and not integrated with managed identity providers.
-2. Rate limiting is in-memory and not shared across multiple replicas.
-3. Model artifacts are loaded at runtime and are not pinned to a dedicated model registry in this repository.
+1. Gateway authentication currently uses shared secret headers and should be paired with a managed identity-aware gateway policy.
+2. Model artifacts are loaded at runtime and are not pinned to a dedicated model registry in this repository.
 
 ## Next Roadmap
 
-1. Add managed identity and scoped role-based access controls.
-2. Move throttling to a distributed store for multi-instance enforcement.
-3. Add model artifact provenance and signed release attestations.
+1. Add JWT/OIDC claim validation from gateway-issued identity context.
+2. Move from gateway shared secret to mutual TLS between gateway and service.
+3. Add model artifact provenance and signed model bundle attestations.
