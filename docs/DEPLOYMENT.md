@@ -22,6 +22,18 @@
    - API at `http://127.0.0.1:8003`
    - Prometheus at `http://127.0.0.1:9093`
 
+## Production Deployment (Container Image)
+
+1. Build and push an image (or use the release workflow image).
+2. Create a `.env` file from `.env.example` and set production values.
+3. Set image reference and start:
+   - `set API_IMAGE=ghcr.io/<owner>/<repo>:<tag>` (Windows)
+   - `docker compose -f docker-compose.prod.yml up -d`
+4. Verify readiness and metrics:
+   - `/health`
+   - `/ready`
+   - `/metrics`
+
 ## Environment Variables
 
 1. `MODEL_NAME`
@@ -32,8 +44,14 @@
 6. `MAX_CONTEXT_CHARS`
 7. `MAX_RESPONSE_CHARS`
 8. `RATE_LIMIT_PER_MINUTE`
-9. `CORS_ORIGINS`
-10. `API_KEY` (optional; enables API key auth for `/score` and `/batch`)
+9. `MAX_REQUEST_BYTES`
+10. `TRUSTED_HOSTS`
+11. `ENABLE_GZIP`
+12. `GZIP_MINIMUM_SIZE`
+13. `PRELOAD_MODEL_ON_STARTUP`
+14. `ENABLE_HSTS`
+15. `CORS_ORIGINS`
+16. `API_KEY` (optional; enables API key auth for `/score` and `/batch`)
 
 ## Release Pipelines
 

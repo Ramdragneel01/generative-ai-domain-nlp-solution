@@ -15,6 +15,16 @@ Response fields:
 5. `default_threshold`
 6. `max_batch_items`
 
+## GET /ready
+
+Returns readiness diagnostics and verifies model backend initialization.
+
+Response fields:
+1. `status`
+2. `timestamp`
+3. `app_version`
+4. `model_loaded`
+
 ## POST /score
 
 Scores one context-response pair.
@@ -22,6 +32,7 @@ Scores one context-response pair.
 Security behavior:
 1. Requires `X-API-Key` header when `API_KEY` is configured.
 2. Subject to per-client rate limiting.
+3. Request body size is capped by `MAX_REQUEST_BYTES`.
 
 Request body:
 1. `context`
@@ -44,6 +55,7 @@ Scores multiple pairs in one request.
 Security behavior:
 1. Requires `X-API-Key` header when `API_KEY` is configured.
 2. Subject to per-client rate limiting.
+3. Request body size is capped by `MAX_REQUEST_BYTES`.
 
 Request body:
 1. `items` array of `{ context, response }`
@@ -72,3 +84,4 @@ Error payload fields:
 Common status codes:
 1. `401` for missing or invalid API key when auth is enabled.
 2. `429` for rate-limit exceedance.
+3. `413` when request payload exceeds `MAX_REQUEST_BYTES`.

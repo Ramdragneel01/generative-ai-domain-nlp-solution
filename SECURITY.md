@@ -16,6 +16,8 @@ Security fixes are applied to the latest `main` branch.
 1. API input size limits for context and response text.
 2. Threshold governance boundaries (`MIN_THRESHOLD`, `MAX_THRESHOLD`).
 3. Request rate limiting for scoring endpoints.
-4. Security headers and CORS allowlist enforced by middleware.
-5. Request IDs returned in both success and error responses.
-6. Optional `X-API-Key` authentication for scoring endpoints when configured.
+4. Request body-size limits via `MAX_REQUEST_BYTES`.
+5. Trusted host allowlisting via `TRUSTED_HOSTS`.
+6. Security headers and CORS allowlist enforced by middleware.
+7. Request IDs returned in both success and error responses.
+8. Optional `X-API-Key` authentication for scoring endpoints when configured.

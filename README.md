@@ -9,8 +9,8 @@ LinkedIn mapping: Generative AI Solution for Large-Scale Domain-Specific NLP Tas
 
 1. Library scorer for sentence-level faithfulness scoring.
 2. Batch scoring support in both library and CLI.
-3. FastAPI service wrapper with `/health`, `/score`, `/batch`, and `/metrics`.
-4. Threshold governance controls and request rate limiting.
+3. FastAPI service wrapper with `/health`, `/ready`, `/score`, `/batch`, and `/metrics`.
+4. Threshold governance controls, request rate limiting, and request size limits.
 5. Prometheus metrics and container deployment artifacts.
 6. CI quality gates and release pipelines for package and container images.
 7. Governance and operations documentation baseline.
@@ -79,9 +79,10 @@ uvicorn hallucination_lens.api:app --host 0.0.0.0 --port 8003 --reload
 Endpoints:
 
 1. `GET /health`
-2. `POST /score`
-3. `POST /batch`
-4. `GET /metrics`
+2. `GET /ready`
+3. `POST /score`
+4. `POST /batch`
+5. `GET /metrics`
 
 Example `POST /score` request:
 
@@ -121,6 +122,14 @@ Runtime threshold must remain inside configured governance range:
 
 This prevents unsafe threshold drift in production calls.
 
+## Production Hardening Controls
+
+1. `TRUSTED_HOSTS` enforces host-header allowlisting for ingress safety.
+2. `MAX_REQUEST_BYTES` rejects oversized request payloads with `413`.
+3. `ENABLE_GZIP` and `GZIP_MINIMUM_SIZE` reduce response payload size.
+4. `PRELOAD_MODEL_ON_STARTUP` enables fail-fast startup checks.
+5. `ENABLE_HSTS` can be enabled behind HTTPS-terminating ingress.
+
 ## Validation Commands
 
 ```bash
@@ -133,6 +142,12 @@ python -m build
 
 ```bash
 docker compose up --build
+```
+
+Production compose (published image):
+
+```bash
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 Local endpoints:

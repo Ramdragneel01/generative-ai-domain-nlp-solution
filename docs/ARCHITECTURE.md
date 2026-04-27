@@ -30,5 +30,7 @@
 
 1. Threshold governance controls avoid unsafe decision drift.
 2. Per-client rate limiting reduces abuse.
-3. Security headers and CORS allowlist are enforced.
-4. Request IDs support traceable diagnostics.
+3. Trusted-host checks reduce Host header abuse in production ingress paths.
+4. Request body-size limits guard against oversized payload DoS patterns.
+5. Security headers and CORS allowlist are enforced.
+6. Request IDs support traceable diagnostics.
