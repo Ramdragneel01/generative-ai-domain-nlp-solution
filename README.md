@@ -30,7 +30,7 @@ The scorer computes faithfulness with sentence-level embedding similarity:
 
 This is fully deterministic for the same model and inputs and does not require a second LLM call.
 
-## Install
+## Quick Start
 
 ```bash
 python -m venv .venv
@@ -132,7 +132,7 @@ This prevents unsafe threshold drift in production calls.
 6. `PRELOAD_MODEL_ON_STARTUP` enables fail-fast startup checks.
 7. `ENABLE_HSTS` can be enabled behind HTTPS-terminating ingress.
 
-## Validation Commands
+## Testing
 
 ```bash
 ruff check src tests
@@ -170,7 +170,7 @@ Local endpoints:
 1. Gateway authentication currently uses shared secret headers and should be paired with a managed identity-aware gateway policy.
 2. Model artifacts are loaded at runtime and are not pinned to a dedicated model registry in this repository.
 
-## Next Roadmap
+## Roadmap
 
 1. Add JWT/OIDC claim validation from gateway-issued identity context.
 2. Move from gateway shared secret to mutual TLS between gateway and service.
